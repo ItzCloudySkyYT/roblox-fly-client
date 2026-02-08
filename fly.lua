@@ -1,10 +1,9 @@
--- FULL CLIENT-SIDE FLY GUI + DIAGONAL CAMERA-FACING FLY
--- Place as LocalScript in StarterPlayerScripts
+-- FULL CLIENT-SIDE FLY GUI + CAMERA-FACING DIAGONAL FLY
+-- LocalScript → StarterPlayerScripts
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
@@ -93,7 +92,7 @@ end
 -- FLY TOGGLE BUTTON
 local flyBtn = makeButton(content,"Fly: OFF",0.05,Color3.fromRGB(60,60,60))
 
--- SPEED TEXTBOX
+-- SPEED TEXTBOX (number only)
 local speedBox = Instance.new("TextBox", content)
 speedBox.Size = UDim2.fromScale(0.9,0.12)
 speedBox.Position = UDim2.fromScale(0.05,0.22)
@@ -102,17 +101,13 @@ speedBox.TextScaled = true
 speedBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
 speedBox.TextColor3 = Color3.new(1,1,1)
 speedBox.ClearTextOnFocus = false
+speedBox.Text = tostring(flySpeed)
 Instance.new("UICorner", speedBox)
 
-local function updateSpeedText()
-	speedBox.Text = "Speed: "..flySpeed
-end
-updateSpeedText()
-
 speedBox.FocusLost:Connect(function()
-	local n = tonumber(speedBox.Text:match("%d+"))
-	if n and n>0 then flySpeed=n end
-	updateSpeedText()
+	local n = tonumber(speedBox.Text)
+	if n and n>0 then flySpeed = n end
+	speedBox.Text = tostring(flySpeed)
 end)
 
 -- FLY UP/DOWN KEY BINDING BUTTONS
@@ -140,7 +135,7 @@ local function enableFly()
 	bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 
 	bg = Instance.new("BodyGyro", root)
-	bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge) -- full rotation
+	bg.MaxTorque = Vector3.new(math.huge,0,math.huge) -- keep upright physics
 	bg.P = 9000
 end
 
@@ -198,10 +193,9 @@ RunService.RenderStepped:Connect(function()
 
 	local cam = camera.CFrame
 
-	-- full camera direction for facing
+	-- HORIZONTAL + vertical movement
 	local forward = cam.LookVector
 	local right = cam.RightVector
-
 	forward = forward.Unit
 	right = right.Unit
 
@@ -212,12 +206,15 @@ RunService.RenderStepped:Connect(function()
 	if move.D then vel += right end
 	if upHeld then vel += Vector3.yAxis end
 	if downHeld then vel -= Vector3.yAxis end
-
 	if vel.Magnitude>0 then vel=vel.Unit*flySpeed end
-	bv.Velocity = vel
 
-	-- FACE ANY DIRECTION, BUT PHYSICS THINKS UPRIGHT
-	if bg and flyEnabled then
-		bg.CFrame = CFrame.new(root.Position, root.Position + forward)
+	bv.Velocity=vel
+
+	-- PHYSICS: stay upright (lock only X/Z rotation)
+	if bg then
+		bg.CFrame = CFrame.new(root.Position, root.Position + Vector3.new(cam.LookVector.X,0,cam.LookVector.Z))
 	end
+
+	-- VISUAL: rotate fully to camera (pitch + yaw)
+	root.CFrame = CFrame.new(root.Position, root.Position + cam.LookVector)
 end)
