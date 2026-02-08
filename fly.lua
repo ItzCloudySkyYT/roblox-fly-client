@@ -1,4 +1,3 @@
---// SERVICES
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -6,233 +5,236 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
---// CHARACTER REFERENCES
-local function getChar()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local humanoid = char:WaitForChild("Humanoid")
-    local root = char:WaitForChild("HumanoidRootPart")
-    return char, humanoid, root
-end
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local root = character:WaitForChild("HumanoidRootPart")
 
-local character, humanoid, root = getChar()
-player.CharacterAdded:Connect(function()
-    character, humanoid, root = getChar()
+player.CharacterAdded:Connect(function(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	root = char:WaitForChild("HumanoidRootPart")
 end)
 
---// SETTINGS
+-------------------------------------------------
+-- SETTINGS
+-------------------------------------------------
 local flying = false
-local speed = 50
+local flySpeed = 50
 local toggleKey = Enum.KeyCode.F
 local flyDownKey = Enum.KeyCode.LeftControl
-local waitingForBind = false
 
--- movement state
-local move = {W=false,A=false,S=false,D=false,Up=false,Down=false}
+local moving = {
+	W=false,A=false,S=false,D=false,
+	Up=false,Down=false
+}
 
---// GUI CREATION
+-------------------------------------------------
+-- GUI
+-------------------------------------------------
 local gui = Instance.new("ScreenGui")
+gui.Name = "FlyGUI"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,220,0,160)
-frame.Position = UDim2.new(0.3,0,0.3,0)
-frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
-frame.BorderSizePixel = 0
-frame.Parent = gui
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,240,0,260)
+frame.Position = UDim2.new(0.7,0,0.4,0)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner",frame)
 
--- Dragging
-local dragging, dragInput, dragStart, startPos
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,30)
+title.Text = "Fly Menu"
+title.TextScaled = true
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.new(1,1,1)
 
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
-    end
-end)
-
--- Minimize button
-local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Size = UDim2.new(0,20,0,20)
-minimizeBtn.Position = UDim2.new(1,-22,0,2)
+local minimizeBtn = Instance.new("TextButton", frame)
+minimizeBtn.Size = UDim2.new(0,30,0,30)
+minimizeBtn.Position = UDim2.new(1,-30,0,0)
 minimizeBtn.Text = "-"
-minimizeBtn.Parent = frame
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+Instance.new("UICorner",minimizeBtn)
 
-local minimized = false
-local miniButton = Instance.new("TextButton")
-miniButton.Size = UDim2.new(0,80,0,30)
-miniButton.Position = UDim2.new(0,10,0,10)
-miniButton.Text = "Fly Menu"
-miniButton.Visible = false
-miniButton.Parent = gui
+local content = Instance.new("Frame", frame)
+content.Size = UDim2.new(1,0,1,-30)
+content.Position = UDim2.new(0,0,0,30)
+content.BackgroundTransparency = 1
 
-minimizeBtn.MouseButton1Click:Connect(function()
-    minimized = true
-    frame.Visible = false
-    miniButton.Visible = true
-end)
-
-miniButton.MouseButton1Click:Connect(function()
-    minimized = false
-    frame.Visible = true
-    miniButton.Visible = false
-end)
-
--- Fly toggle button
-local flyBtn = Instance.new("TextButton")
-flyBtn.Size = UDim2.new(1,-20,0,30)
-flyBtn.Position = UDim2.new(0,10,0,10)
+local flyBtn = Instance.new("TextButton", content)
+flyBtn.Size = UDim2.new(0.9,0,0.15,0)
+flyBtn.Position = UDim2.new(0.05,0,0,0)
 flyBtn.Text = "Fly: OFF"
-flyBtn.Parent = frame
+flyBtn.BackgroundColor3 = Color3.fromRGB(170,0,0)
+Instance.new("UICorner",flyBtn)
 
--- Speed box
-local speedBox = Instance.new("TextBox")
-speedBox.Size = UDim2.new(1,-20,0,30)
-speedBox.Position = UDim2.new(0,10,0,50)
-speedBox.Text = tostring(speed)
-speedBox.ClearTextOnFocus = false
-speedBox.Parent = frame
+local speedBox = Instance.new("TextBox", content)
+speedBox.Size = UDim2.new(0.9,0,0.15,0)
+speedBox.Position = UDim2.new(0.05,0,0.2,0)
+speedBox.Text = tostring(flySpeed)
+speedBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
+speedBox.TextScaled = true
+Instance.new("UICorner",speedBox)
 
+local bindToggleBtn = Instance.new("TextButton", content)
+bindToggleBtn.Size = UDim2.new(0.9,0,0.15,0)
+bindToggleBtn.Position = UDim2.new(0.05,0,0.4,0)
+bindToggleBtn.Text = "Toggle Key: F"
+bindToggleBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+Instance.new("UICorner",bindToggleBtn)
+
+local bindDownBtn = Instance.new("TextButton", content)
+bindDownBtn.Size = UDim2.new(0.9,0,0.15,0)
+bindDownBtn.Position = UDim2.new(0.05,0,0.6,0)
+bindDownBtn.Text = "Fly Down: CTRL"
+bindDownBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+Instance.new("UICorner",bindDownBtn)
+
+-------------------------------------------------
+-- MINIMIZE
+-------------------------------------------------
+local minimized=false
+minimizeBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	content.Visible = not minimized
+	frame.Size = minimized and UDim2.new(0,240,0,30) or UDim2.new(0,240,0,260)
+end)
+
+-------------------------------------------------
+-- KEYBIND CHANGER
+-------------------------------------------------
+local waitingToggle=false
+local waitingDown=false
+
+bindToggleBtn.MouseButton1Click:Connect(function()
+	bindToggleBtn.Text="Press key..."
+	waitingToggle=true
+end)
+
+bindDownBtn.MouseButton1Click:Connect(function()
+	bindDownBtn.Text="Press key..."
+	waitingDown=true
+end)
+
+UIS.InputBegan:Connect(function(input,gp)
+	if gp then return end
+
+	if waitingToggle then
+		toggleKey=input.KeyCode
+		bindToggleBtn.Text="Toggle Key: "..toggleKey.Name
+		waitingToggle=false
+		return
+	end
+
+	if waitingDown then
+		flyDownKey=input.KeyCode
+		bindDownBtn.Text="Fly Down: "..flyDownKey.Name
+		waitingDown=false
+		return
+	end
+end)
+
+-------------------------------------------------
+-- SPEED BOX
+-------------------------------------------------
 speedBox.FocusLost:Connect(function()
-    local num = tonumber(speedBox.Text)
-    if num then
-        speed = math.clamp(num,10,300)
-        speedBox.Text = tostring(speed)
-    else
-        speedBox.Text = tostring(speed)
-    end
+	local num=tonumber(speedBox.Text)
+	if num and num>0 then
+		flySpeed=num
+	end
+	speedBox.Text=tostring(flySpeed)
 end)
 
--- Bind fly down button
-local bindBtn = Instance.new("TextButton")
-bindBtn.Size = UDim2.new(1,-20,0,30)
-bindBtn.Position = UDim2.new(0,10,0,90)
-bindBtn.Text = "Fly Down: "..flyDownKey.Name
-bindBtn.Parent = frame
-
-bindBtn.MouseButton1Click:Connect(function()
-    bindBtn.Text = "Press any key..."
-    waitingForBind = true
-end)
-
---// FLY PHYSICS
-local bodyVel, bodyGyro
+-------------------------------------------------
+-- FLY PHYSICS
+-------------------------------------------------
+local bodyVel
+local bodyGyro
 
 local function startFly()
-    if flying then return end
-    flying = true
-    flyBtn.Text = "Fly: ON"
+	if flying then return end
+	flying=true
+	
+	bodyVel=Instance.new("BodyVelocity")
+	bodyVel.MaxForce=Vector3.new(1e9,1e9,1e9)
+	bodyVel.Velocity=Vector3.zero
+	bodyVel.Parent=root
 
-    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+	bodyGyro=Instance.new("BodyGyro")
+	bodyGyro.MaxTorque=Vector3.new(1e9,1e9,1e9)
+	bodyGyro.P=1e5
+	bodyGyro.Parent=root
 
-    bodyVel = Instance.new("BodyVelocity")
-    bodyVel.MaxForce = Vector3.new(1e6,1e6,1e6)
-    bodyVel.Velocity = Vector3.zero
-    bodyVel.Parent = root
-
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.MaxTorque = Vector3.new(1e6,1e6,1e6)
-    bodyGyro.P = 3000
-    bodyGyro.Parent = root
-
-    RunService:BindToRenderStep("FlyMovement", Enum.RenderPriority.Character.Value, function()
-        if not flying or not root then return end
-
-        local camCF = camera.CFrame
-        local forward = Vector3.new(camCF.LookVector.X,0,camCF.LookVector.Z).Unit
-        local right = Vector3.new(camCF.RightVector.X,0,camCF.RightVector.Z).Unit
-
-        local velocity = Vector3.zero
-
-        if move.W then velocity += forward end
-        if move.S then velocity -= forward end
-        if move.A then velocity -= right end
-        if move.D then velocity += right end
-        if move.Up then velocity += Vector3.new(0,1,0) end
-        if move.Down then velocity -= Vector3.new(0,1,0) end
-
-        if velocity.Magnitude > 0 then
-            velocity = velocity.Unit * speed
-        end
-
-        -- cancel gravity effect by maintaining vertical force
-        bodyVel.Velocity = velocity
-
-        -- face camera direction but upright
-        local lookFlat = Vector3.new(camCF.LookVector.X,0,camCF.LookVector.Z)
-        if lookFlat.Magnitude > 0 then
-            bodyGyro.CFrame = CFrame.lookAt(root.Position, root.Position + lookFlat)
-        end
-    end)
+	flyBtn.Text="Fly: ON"
+	flyBtn.BackgroundColor3=Color3.fromRGB(0,170,0)
 end
 
 local function stopFly()
-    flying = false
-    flyBtn.Text = "Fly: OFF"
-
-    RunService:UnbindFromRenderStep("FlyMovement")
-
-    if bodyVel then bodyVel:Destroy() end
-    if bodyGyro then bodyGyro:Destroy() end
-
-    humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	flying=false
+	if bodyVel then bodyVel:Destroy() end
+	if bodyGyro then bodyGyro:Destroy() end
+	
+	flyBtn.Text="Fly: OFF"
+	flyBtn.BackgroundColor3=Color3.fromRGB(170,0,0)
 end
 
 flyBtn.MouseButton1Click:Connect(function()
-    if flying then stopFly() else startFly() end
+	if flying then stopFly() else startFly() end
 end)
 
---// INPUT HANDLING
-UIS.InputBegan:Connect(function(input,gpe)
-    if gpe then return end
+-------------------------------------------------
+-- INPUT
+-------------------------------------------------
+UIS.InputBegan:Connect(function(input,gp)
+	if gp then return end
 
-    if waitingForBind and input.UserInputType == Enum.UserInputType.Keyboard then
-        flyDownKey = input.KeyCode
-        bindBtn.Text = "Fly Down: "..flyDownKey.Name
-        waitingForBind = false
-        return
-    end
+	if input.KeyCode==toggleKey then
+		if flying then stopFly() else startFly() end
+	end
 
-    if input.KeyCode == toggleKey then
-        if flying then stopFly() else startFly() end
-    end
-
-    if input.KeyCode == Enum.KeyCode.W then move.W = true end
-    if input.KeyCode == Enum.KeyCode.A then move.A = true end
-    if input.KeyCode == Enum.KeyCode.S then move.S = true end
-    if input.KeyCode == Enum.KeyCode.D then move.D = true end
-    if input.KeyCode == Enum.KeyCode.Space then move.Up = true end
-    if input.KeyCode == flyDownKey then move.Down = true end
+	if input.KeyCode==Enum.KeyCode.W then moving.W=true end
+	if input.KeyCode==Enum.KeyCode.S then moving.S=true end
+	if input.KeyCode==Enum.KeyCode.A then moving.A=true end
+	if input.KeyCode==Enum.KeyCode.D then moving.D=true end
+	if input.KeyCode==Enum.KeyCode.Space then moving.Up=true end
+	if input.KeyCode==flyDownKey then moving.Down=true end
 end)
 
 UIS.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.W then move.W = false end
-    if input.KeyCode == Enum.KeyCode.A then move.A = false end
-    if input.KeyCode == Enum.KeyCode.S then move.S = false end
-    if input.KeyCode == Enum.KeyCode.D then move.D = false end
-    if input.KeyCode == Enum.KeyCode.Space then move.Up = false end
-    if input.KeyCode == flyDownKey then move.Down = false end
+	if input.KeyCode==Enum.KeyCode.W then moving.W=false end
+	if input.KeyCode==Enum.KeyCode.S then moving.S=false end
+	if input.KeyCode==Enum.KeyCode.A then moving.A=false end
+	if input.KeyCode==Enum.KeyCode.D then moving.D=false end
+	if input.KeyCode==Enum.KeyCode.Space then moving.Up=false end
+	if input.KeyCode==flyDownKey then moving.Down=false end
+end)
+
+-------------------------------------------------
+-- MAIN LOOP
+-------------------------------------------------
+RunService.RenderStepped:Connect(function()
+	if not flying or not bodyVel then return end
+	
+	local camCF=camera.CFrame
+	local moveDir=Vector3.zero
+
+	if moving.W then moveDir+=camCF.LookVector end
+	if moving.S then moveDir-=camCF.LookVector end
+	if moving.A then moveDir-=camCF.RightVector end
+	if moving.D then moveDir+=camCF.RightVector end
+
+	if moveDir.Magnitude>0 then
+		moveDir=moveDir.Unit
+	end
+
+	local vertical=0
+	if moving.Up then vertical+=1 end
+	if moving.Down then vertical-=1 end
+
+	bodyVel.Velocity = moveDir*flySpeed + Vector3.new(0,vertical*flySpeed,0)
+
+	-- visual facing: fully match camera direction
+	bodyGyro.CFrame = camCF
 end)
